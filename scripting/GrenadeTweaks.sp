@@ -9,7 +9,7 @@ public Plugin myinfo =
 	name = "Grenade Tweaks",
 	author = "Vauff, BotoX",
 	description = "Removes smoke particles & audio ringing from HE grenade explosions",
-	version = "2.0.1",
+	version = "2.0.2",
 	url = "https://github.com/Vauff/GrenadeTweaks"
 };
 
