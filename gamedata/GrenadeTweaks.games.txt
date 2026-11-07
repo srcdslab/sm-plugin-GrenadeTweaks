@@ -1,5 +1,19 @@
 "Games"
 {
+	"cstrike"
+	{
+		"Offsets"
+		{
+			// CCSPlayer
+			"OnDamagedByExplosion"
+			{
+				"windows"	"342"
+				"linux"		"343"
+				"linux64"	"343"
+				"mac"		"343"
+			}
+		}
+	}
 	"csgo"
 	{
 		"Offsets"

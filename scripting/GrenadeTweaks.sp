@@ -9,7 +9,7 @@ public Plugin myinfo =
 	name = "Grenade Tweaks",
 	author = "Vauff, BotoX",
 	description = "Removes smoke particles & audio ringing from HE grenade explosions",
-	version = "2.0.2",
+	version = "2.1.0",
 	url = "https://github.com/Vauff/GrenadeTweaks"
 };
 
@@ -25,29 +25,47 @@ public void OnPluginStart()
 		SetFailState("Can't find GrenadeTweaks.games.txt gamedata");
 
 	Handle gameData = LoadGameConfigFile("GrenadeTweaks.games");
-	
+
 	if (gameData == INVALID_HANDLE)
 		SetFailState("Can't find GrenadeTweaks.games.txt gamedata");
 
-	g_hGetParticleSystemName = DHookCreate(GameConfGetOffset(gameData, "GetParticleSystemName"), HookType_Entity, ReturnType_CharPtr, ThisPointer_Ignore, Hook_GetParticleSystemName);
-	DHookAddParam(g_hGetParticleSystemName, HookParamType_Int);
-	DHookAddParam(g_hGetParticleSystemName, HookParamType_ObjectPtr);
+	// CS:S has no CHEGrenadeProjectile::GetParticleSystemName, so the smoke part only runs on games that have the offset (CS:GO)
+	int offset = GameConfGetOffset(gameData, "GetParticleSystemName");
 
-	g_hDamagedByExplosion = DHookCreate(GameConfGetOffset(gameData, "OnDamagedByExplosion"), HookType_Entity, ReturnType_Void, ThisPointer_Ignore, Hook_OnDamagedByExplosion);
+	if (offset != -1)
+	{
+		g_hGetParticleSystemName = DHookCreate(offset, HookType_Entity, ReturnType_CharPtr, ThisPointer_Ignore, Hook_GetParticleSystemName);
+		DHookAddParam(g_hGetParticleSystemName, HookParamType_Int);
+		DHookAddParam(g_hGetParticleSystemName, HookParamType_ObjectPtr);
+
+		if (!g_hGetParticleSystemName)
+			SetFailState("Failed to setup hook for GetParticleSystemName");
+	}
+
+	offset = GameConfGetOffset(gameData, "OnDamagedByExplosion");
+
+	if (offset == -1)
+		SetFailState("Can't find OnDamagedByExplosion offset in GrenadeTweaks.games.txt gamedata");
+
+	g_hDamagedByExplosion = DHookCreate(offset, HookType_Entity, ReturnType_Void, ThisPointer_Ignore, Hook_OnDamagedByExplosion);
 	DHookAddParam(g_hDamagedByExplosion, HookParamType_ObjectPtr);
 
 	CloseHandle(gameData);
 
-	if (!g_hGetParticleSystemName)
-		SetFailState("Failed to setup hook for GetParticleSystemName");
-
 	if (!g_hDamagedByExplosion)
 		SetFailState("Failed to setup hook for OnDamagedByExplosion");
+
+	// Late load
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if (IsClientInGame(client))
+			OnClientPutInServer(client);
+	}
 }
 
 public void OnEntityCreated(int entity, const char[] classname)
 {
-	if (StrEqual(classname, "hegrenade_projectile"))
+	if (g_hGetParticleSystemName && StrEqual(classname, "hegrenade_projectile"))
 		DHookEntity(g_hGetParticleSystemName, false, entity);
 }
 
@@ -57,7 +75,7 @@ public void OnClientPutInServer(int client)
 }
 
 //void CCSPlayer::OnDamagedByExplosion(const CTakeDamageInfo &info)
-public MRESReturn Hook_OnDamagedByExplosion(int pThis, Handle hReturn, Handle hParams)
+public MRESReturn Hook_OnDamagedByExplosion(DHookParam hParams)
 {
 	return MRES_Supercede;
 }
